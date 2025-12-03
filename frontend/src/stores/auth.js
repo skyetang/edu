@@ -1,19 +1,11 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
-
-// Configure axios defaults
-// Assuming the backend is proxy-ed via vite to /api, or we need to set base URL
-// Since dev server is running on port 8000 for backend, and frontend is on 5173
-// We should check vite.config.js, but for now let's assume relative path /api works if proxy is set
-// or use absolute path. Let's try relative /api first.
-const api = axios.create({
-  baseURL: '/api'
-})
+import * as authApi from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('user')) || null,
     token: localStorage.getItem('token') || null,
+    refreshTokenStr: localStorage.getItem('refreshToken') || null,
     loading: false,
     error: null
   }),
@@ -23,12 +15,55 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    // 错误处理辅助函数
+    handleActionError(error) {
+      // 记录错误用于调试
+      console.error('Auth Action Error:', error)
+      
+      // 如果已经是标准化错误，直接返回
+      if (error instanceof Error && !error.isAxiosError) {
+        return error
+      }
+
+      // 如果是 request.js 抛出的业务错误对象 (Plain Object)
+      if (error && error.code && error.message && !error.response) {
+          const newError = new Error(error.message)
+          newError.code = error.code
+          newError.isGloballyHandled = error.isGloballyHandled
+          newError.body = error.body
+          return newError
+      }
+
+      // 处理 Axios 错误
+      if (error.response) {
+        // 服务器响应错误状态
+        const data = error.response.data
+        const message = data?.message || data?.detail || '请求失败'
+        const newError = new Error(message)
+        newError.code = data?.code
+        newError.original = error
+        if (error.isGloballyHandled) {
+            newError.isGloballyHandled = true
+        }
+        return newError
+      } else if (error.request) {
+        // 请求已发出但无响应
+        const newError = new Error('网络连接失败，请检查您的网络')
+        if (error.isGloballyHandled) {
+            newError.isGloballyHandled = true
+        }
+        return newError
+      }
+      
+      return new Error(error.message || '未知错误')
+    },
+
     async sendCode(phone, scene) {
       try {
-        const response = await api.post('/auth/send_code', { phone, scene })
-        return response.data
+        const data = await authApi.sendCode({ phone, scene })
+        return data
       } catch (err) {
-        throw err.response?.data || err
+        throw this.handleActionError(err)
       }
     },
 
@@ -36,16 +71,13 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/auth/login/code', { phone, code })
-        if (response.data.success) {
-          this.setAuth(response.data.data)
-          return true
-        } else {
-          throw new Error(response.data.message)
-        }
+        const data = await authApi.loginWithCode({ phone, code })
+        this.setAuth(data)
+        return true
       } catch (err) {
-        this.error = err.response?.data?.message || err.message
-        throw err
+        const handledError = this.handleActionError(err)
+        this.error = handledError.message
+        throw handledError
       } finally {
         this.loading = false
       }
@@ -55,16 +87,13 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/auth/login/password', { phone, password })
-        if (response.data.success) {
-          this.setAuth(response.data.data)
-          return true
-        } else {
-          throw new Error(response.data.message)
-        }
+        const data = await authApi.loginWithPassword({ phone, password })
+        this.setAuth(data)
+        return true
       } catch (err) {
-        this.error = err.response?.data?.message || err.message
-        throw err
+        const handledError = this.handleActionError(err)
+        this.error = handledError.message
+        throw handledError
       } finally {
         this.loading = false
       }
@@ -74,34 +103,111 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/auth/register', { phone, code, password })
-        if (response.data.success) {
-          this.setAuth(response.data.data)
-          return true
-        } else {
-          throw new Error(response.data.message)
-        }
+        const data = await authApi.register({ phone, code, password })
+        this.setAuth(data)
+        return true
       } catch (err) {
-        this.error = err.response?.data?.message || err.message
-        throw err
+        const handledError = this.handleActionError(err)
+        this.error = handledError.message
+        throw handledError
       } finally {
         this.loading = false
       }
     },
 
+    async fetchProfile() {
+      try {
+        const user = await authApi.getProfile()
+        this.user = user
+        // Update local storage if needed, but usually user object in LS is static or updated on login.
+        // Better to keep store user reactive.
+        localStorage.setItem('user', JSON.stringify(user))
+        return user
+      } catch (err) {
+        console.error('Failed to fetch profile', err)
+      }
+    },
+
+    async updateProfile(data) {
+      try {
+        const resData = await authApi.updateProfile(data)
+        this.user = { ...this.user, ...resData }
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return true
+      } catch (err) {
+        throw this.handleActionError(err)
+      }
+    },
+
+    async changePassword(data) {
+       try {
+         const resData = await authApi.changePassword(data)
+         return resData
+       } catch (err) {
+         throw this.handleActionError(err)
+       }
+    },
+
+    async verifyOldPhone(code) {
+        try {
+            const resData = await authApi.verifyOldPhone({ code })
+            return resData
+        } catch (err) {
+            throw this.handleActionError(err)
+        }
+    },
+
+    async changeNewPhone(phone, code) {
+        try {
+            const data = await authApi.changeNewPhone({ phone, code })
+             // 使用后端返回的数据更新用户信息，包含已脱敏的手机号
+             if (data && data.user) {
+                this.user = data.user
+             } else {
+                this.user.phone = phone
+             }
+             localStorage.setItem('user', JSON.stringify(this.user))
+             return true
+        } catch (err) {
+            throw this.handleActionError(err)
+        }
+    },
+
+    async uploadAvatar(file) {
+        try {
+            const formData = new FormData()
+            formData.append('avatar', file)
+            const data = await authApi.uploadAvatar(formData)
+             this.user.avatar = data.url
+             localStorage.setItem('user', JSON.stringify(this.user))
+             return data.url
+        } catch (err) {
+            throw this.handleActionError(err)
+        }
+    },
+
     setAuth(data) {
       this.token = data.token
+      this.refreshTokenStr = data.refresh
       this.user = data.user
       localStorage.setItem('token', data.token)
+      if (data.refresh) localStorage.setItem('refreshToken', data.refresh)
       localStorage.setItem('user', JSON.stringify(data.user))
-      // Set default header for future requests
-      // api.defaults.headers.common['Authorization'] = `Bearer ${data.token}` 
+    },
+    
+    setAuthTokens(token, refresh) {
+      this.token = token
+      this.refreshTokenStr = refresh
+      localStorage.setItem('token', token)
+      if (refresh) localStorage.setItem('refreshToken', refresh)
     },
 
     logout() {
       this.token = null
+      this.refreshTokenStr = null
       this.user = null
       localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
     }
   }

@@ -28,7 +28,7 @@ const handleUserSelect = (key) => {
     authStore.logout()
     router.push('/')
   } else if (key === 'profile') {
-    router.push('/profile') // Assuming profile page exists or will exist
+    router.push('/admin/member/overview')
   }
 }
 
@@ -71,11 +71,13 @@ const handleLoginClick = () => {
       <!-- Auth Buttons -->
       <div class="auth-buttons desktop-auth">
         <div v-if="authStore.isLoggedIn" class="user-info">
-          <n-dropdown trigger="hover" :options="userOptions" @select="handleUserSelect">
-            <div class="user-trigger" @click="navigateTo('/profile')">
-              <span class="user-name">{{ authStore.user?.phone || '用户' }}</span>
-            </div>
-          </n-dropdown>
+          <n-button 
+            quaternary 
+            type="primary" 
+            @click="navigateTo('/admin/member/overview')"
+          >
+            个人中心
+          </n-button>
         </div>
         <n-button 
           v-else 
@@ -108,8 +110,7 @@ const handleLoginClick = () => {
         </a>
         <div class="mobile-auth">
           <div v-if="authStore.isLoggedIn" class="mobile-user">
-             <span class="mobile-user-name">{{ authStore.user?.phone }}</span>
-             <n-button size="small" @click="authStore.logout()">退出</n-button>
+             <n-button type="primary" block @click="navigateTo('/admin/member/overview')">个人中心</n-button>
           </div>
           <n-button v-else type="primary" block @click="handleLoginClick">登录 / 注册</n-button>
         </div>
@@ -191,6 +192,11 @@ const handleLoginClick = () => {
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
 }
 
 .login-btn {

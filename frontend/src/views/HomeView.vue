@@ -1,5 +1,5 @@
 <script setup>
-import { RocketOutline, BookOutline, PeopleOutline, ChevronBack, ChevronForward } from '@vicons/ionicons5'
+import { RocketOutline, BookOutline, PeopleOutline, ChevronBack, ChevronForward, Play, GitNetworkOutline, CubeOutline, FlashOutline } from '@vicons/ionicons5'
 import { NIcon, NCarousel, NCarouselItem } from 'naive-ui'
 import { ref } from 'vue'
 
@@ -60,9 +60,24 @@ const carouselSlides = [
             </div>
             
             <div class="hero-image">
-              <!-- Slide 1: Video Placeholder -->
-              <div v-if="slide.imageType === 'video'" class="video-placeholder">
-                <div class="play-icon">▶</div>
+              <!-- Slide 1: Course Card Stack Graphic -->
+              <div v-if="slide.imageType === 'video'" class="course-graphic">
+                <div class="course-card card-bg-1"></div>
+                <div class="course-card card-bg-2"></div>
+                <div class="course-card card-main">
+                  <div class="card-header">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="play-btn-container">
+                    <div class="play-btn-inner">
+                      <n-icon size="32" color="white">
+                        <Play />
+                      </n-icon>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Slide 2: AI Circle -->
@@ -77,27 +92,54 @@ const carouselSlides = [
               <div v-else-if="slide.imageType === 'workflow-tree'" class="workflow-graphic">
                 <!-- SVG Lines -->
                 <svg class="tree-lines" viewBox="0 0 300 250">
-                  <!-- Top to Mid -->
-                  <line x1="150" y1="30" x2="75" y2="100" stroke="#FF6633" stroke-width="2" />
-                  <line x1="150" y1="30" x2="225" y2="100" stroke="#FF6633" stroke-width="2" />
-                  <line x1="150" y1="30" x2="150" y2="100" stroke="#FF6633" stroke-width="2" />
+                  <!-- Connecting Lines (Background) -->
+                  <g stroke="rgba(255, 102, 51, 0.2)" stroke-width="2" fill="none">
+                    <path d="M150 40 L75 110" />
+                    <path d="M150 40 L225 110" />
+                    <path d="M150 40 L150 110" />
+                    <path d="M75 110 L75 190" />
+                    <path d="M225 110 L180 190" />
+                    <path d="M150 110 L150 190" />
+                  </g>
                   
-                  <!-- Mid to Bottom -->
-                  <line x1="75" y1="100" x2="75" y2="180" stroke="#FF6633" stroke-width="2" />
-                  <line x1="225" y1="100" x2="180" y2="180" stroke="#FF6633" stroke-width="2" />
-                  <line x1="150" y1="100" x2="150" y2="180" stroke="#FF6633" stroke-width="2" />
+                  <!-- Flowing Data (Animated) -->
+                  <g stroke="#ff6b35" stroke-width="2" fill="none" class="flow-paths">
+                    <path d="M150 40 L75 110" />
+                    <path d="M150 40 L225 110" />
+                    <path d="M150 40 L150 110" />
+                    <path d="M75 110 L75 190" />
+                    <path d="M225 110 L180 190" />
+                    <path d="M150 110 L150 190" />
+                  </g>
                 </svg>
 
-                <!-- Nodes -->
-                <div class="node root" style="top: 10px; left: 130px;"></div>
+                <!-- Nodes with Icons -->
+                <!-- Level 0: Root -->
+                <div class="node-item root" style="top: 20px; left: 130px;">
+                  <n-icon size="20" color="white"><GitNetworkOutline /></n-icon>
+                </div>
                 
-                <div class="node l1" style="top: 90px; left: 55px;"></div>
-                <div class="node c1" style="top: 90px; left: 130px;"></div>
-                <div class="node r1" style="top: 90px; left: 205px;"></div>
+                <!-- Level 1 -->
+                <div class="node-item l1" style="top: 90px; left: 55px;">
+                  <n-icon size="18" color="white"><CubeOutline /></n-icon>
+                </div>
+                <div class="node-item c1" style="top: 90px; left: 130px;">
+                  <n-icon size="18" color="white"><CubeOutline /></n-icon>
+                </div>
+                <div class="node-item r1" style="top: 90px; left: 205px;">
+                  <n-icon size="18" color="white"><CubeOutline /></n-icon>
+                </div>
                 
-                <div class="node l2" style="top: 170px; left: 55px;"></div>
-                <div class="node c2" style="top: 170px; left: 130px;"></div>
-                <div class="node r2" style="top: 170px; left: 160px;"></div>
+                <!-- Level 2 -->
+                <div class="node-item l2" style="top: 170px; left: 55px;">
+                  <n-icon size="16" color="white"><FlashOutline /></n-icon>
+                </div>
+                <div class="node-item c2" style="top: 170px; left: 130px;">
+                  <n-icon size="16" color="white"><FlashOutline /></n-icon>
+                </div>
+                <div class="node-item r2" style="top: 170px; left: 160px;">
+                  <n-icon size="16" color="white"><FlashOutline /></n-icon>
+                </div>
               </div>
             </div>
           </div>
@@ -180,7 +222,7 @@ const carouselSlides = [
         <div class="grid-features">
           <div class="feature-item">
             <div class="icon-box">
-              <n-icon size="40" color="#FF6633">
+              <n-icon size="40" color="#ff6b35">
                 <RocketOutline />
               </n-icon>
             </div>
@@ -190,7 +232,7 @@ const carouselSlides = [
           
           <div class="feature-item">
             <div class="icon-box">
-              <n-icon size="40" color="#FF6633">
+              <n-icon size="40" color="#ff6b35">
                 <BookOutline />
               </n-icon>
             </div>
@@ -200,7 +242,7 @@ const carouselSlides = [
 
           <div class="feature-item">
             <div class="icon-box">
-              <n-icon size="40" color="#FF6633">
+              <n-icon size="40" color="#ff6b35">
                 <PeopleOutline />
               </n-icon>
             </div>
@@ -263,7 +305,7 @@ const carouselSlides = [
 
 /* Hero Section */
 .hero-section {
-  background-color: var(--bg-secondary);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF0E6 100%);
   min-height: 500px;
   position: relative;
 }
@@ -386,54 +428,109 @@ const carouselSlides = [
 }
 
 /* Graphics */
-.video-placeholder {
-  width: 100%;
-  max-width: 380px;
-  aspect-ratio: 16/9;
-  background: linear-gradient(135deg, #fff 0%, #FFF5F0 100%);
-  border: none;
-  border-radius: 20px;
+.course-graphic {
+  width: 320px;
+  height: 240px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 20px 40px rgba(255, 102, 51, 0.15), 0 0 0 1px rgba(255, 102, 51, 0.1);
-  animation: float 6s ease-in-out infinite;
-  position: relative;
-  overflow: hidden;
 }
 
-/* Add a decorative course card look */
-.video-placeholder::before {
-  content: '';
+.course-card {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 6px;
-  background: var(--primary-color);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(255, 102, 51, 0.15);
+  transition: all 0.5s ease;
 }
 
-.play-icon {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, #FF8855, #FF6633);
+.card-bg-1 {
+  width: 260px;
+  height: 160px;
+  background: rgba(255, 102, 51, 0.15);
+  transform: rotate(-8deg) translate(-15px, 15px);
+  z-index: 1;
+  animation: float-bg-1 6s ease-in-out infinite;
+}
+
+.card-bg-2 {
+  width: 270px;
+  height: 170px;
+  background: rgba(255, 102, 51, 0.3);
+  transform: rotate(5deg) translate(15px, -5px);
+  z-index: 2;
+  animation: float-bg-2 7s ease-in-out infinite;
+}
+
+.card-main {
+  width: 280px;
+  height: 180px;
+  background: white;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 102, 51, 0.1);
+  animation: float-main 5s ease-in-out infinite;
+}
+
+.card-header {
+  height: 28px;
+  background: rgba(255, 102, 51, 0.08);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 102, 51, 0.05);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  color: white;
-  font-size: 24px;
+  background: rgba(255, 102, 51, 0.4);
+}
+
+.play-btn-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(255, 102, 51, 0.05) 0%, transparent 70%);
+}
+
+.play-btn-inner {
+  width: 60px;
+  height: 60px;
+  background: var(--primary-color);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding-left: 4px;
-  animation: pulse 2s infinite;
-  cursor: pointer;
-  transition: all 0.3s;
   box-shadow: 0 8px 20px rgba(255, 102, 51, 0.4);
-  z-index: 2;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.play-icon:hover {
+.play-btn-inner:hover {
   transform: scale(1.1);
   box-shadow: 0 12px 25px rgba(255, 102, 51, 0.5);
+}
+
+@keyframes float-main {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes float-bg-1 {
+  0%, 100% { transform: rotate(-8deg) translate(-15px, 15px); }
+  50% { transform: rotate(-6deg) translate(-15px, 10px); }
+}
+
+@keyframes float-bg-2 {
+  0%, 100% { transform: rotate(5deg) translate(15px, -5px); }
+  50% { transform: rotate(4deg) translate(15px, 0px); }
 }
 
 /* AI Circle Graphic */
@@ -449,7 +546,7 @@ const carouselSlides = [
 .ai-core {
   width: 100px;
   height: 100px;
-  background: linear-gradient(135deg, #FF8855, #FF6633);
+  background: var(--primary-color);
   border-radius: 50%;
   color: white;
   font-size: 32px;
@@ -481,9 +578,7 @@ const carouselSlides = [
   width: 300px;
   height: 250px;
   position: relative;
-  background-color: #FFF5F0; /* Match bg to blend, or use white circle */
-  background: radial-gradient(circle, #fff 0%, #FFF5F0 70%); /* Subtle glow */
-  border-radius: 50%; /* Optional container shape */
+  animation: float 6s ease-in-out infinite; /* Added floating effect */
 }
 
 .tree-lines {
@@ -494,67 +589,60 @@ const carouselSlides = [
   height: 100%;
 }
 
-.tree-lines line {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: drawLines 2s ease-out forwards;
+.flow-paths path {
+  stroke-dasharray: 10 100;
+  stroke-dashoffset: 110;
+  animation: flow-line 1.5s linear infinite;
+  opacity: 0.8;
 }
 
-.node {
+.node-item {
   position: absolute;
   width: 40px;
-  height: 28px;
+  height: 40px;
   background-color: var(--primary-color);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(255, 102, 51, 0.3);
-  opacity: 0;
-  animation: popIn 0.5s ease-out forwards;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(255, 102, 51, 0.4);
+  z-index: 2;
+  transition: transform 0.3s;
 }
 
-.node.root { animation-delay: 0.5s; }
-.node.l1, .node.c1, .node.r1 { animation-delay: 1s; }
-.node.l2, .node.c2, .node.r2 { animation-delay: 1.5s; }
-
-.node::after {
-  content: '';
-  display: block;
-  width: 8px;
-  height: 8px;
-  background: white;
-  border-radius: 50%;
-  margin: 10px auto;
+.node-item.root {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  animation: pulse-node 3s infinite;
 }
 
-/* Keyframes */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+.node-item.l1, .node-item.c1, .node-item.r1 {
+  animation: pulse-node 3s infinite 0.5s;
 }
 
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 102, 51, 0.7); }
-  70% { box-shadow: 0 0 0 15px rgba(255, 102, 51, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 102, 51, 0); }
+.node-item.l2, .node-item.c2, .node-item.r2 {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  animation: pulse-node 3s infinite 1s;
 }
 
-@keyframes ripple {
-  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+@keyframes flow-line {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
-@keyframes drawLines {
-  to { stroke-dashoffset: 0; }
+@keyframes pulse-node {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 102, 51, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 8px 20px rgba(255, 102, 51, 0.6); }
 }
 
-@keyframes popIn {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
 
 /* Products Section */
 .products-section {
-  background-color: #FEEFED;
+  background-color: #FFFBF9;
 }
 
 .grid-cards {
@@ -611,7 +699,7 @@ const carouselSlides = [
 
 /* Why Us Section */
 .why-us-section {
-  background-color: #FFF8F2;
+  background-color: #FFF5EF;
 }
 
 .grid-features {
@@ -671,14 +759,22 @@ const carouselSlides = [
 
 /* Resources Section */
 .resources-section {
-  background-color: #FDF2EE;
+  background-color: #FFFFFF;
 }
 
 .resource-card {
   background-color: #fff;
-  border: none;
+  border: 1px solid #eee; /* Added border */
   align-items: flex-start;
   padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* Added shadow */
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.resource-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
 }
 
 .resource-card h3 {
@@ -711,13 +807,15 @@ const carouselSlides = [
 /* Responsive Design */
 @media (max-width: 992px) {
   .hero-content {
-    flex-direction: column;
+    flex-direction: column-reverse; /* Stack image on top of text */
     text-align: center;
+    justify-content: center; /* Center content vertically if needed */
   }
 
   .hero-text {
     margin-bottom: 20px;
     width: 100%;
+    flex: unset; /* Reset flex shrink/grow */
   }
   
   .description {
@@ -729,6 +827,9 @@ const carouselSlides = [
     width: 100%;
     height: auto;
     min-height: 250px;
+    justify-content: center; /* Center image horizontally */
+    flex: unset; /* Reset flex shrink/grow */
+    margin-bottom: 30px; /* Add spacing between image and text */
   }
   
   .hero-carousel {
@@ -767,14 +868,26 @@ const carouselSlides = [
     min-height: auto;
   }
 
+  /* Ensure hero image is visible and centered on mobile */
   .hero-image {
-    display: none;
+    display: flex; 
+    margin-bottom: 0; /* Reduced from 20px */
+    min-height: 180px; /* Reduced height */
+  }
+
+  /* Scale down graphics for mobile */
+  .course-graphic, .ai-graphic, .workflow-graphic {
+    transform: scale(0.75);
+    width: auto; 
+    height: auto;
+    min-height: 220px; 
+    min-width: 280px;
+    margin: -30px 0; /* Negative margin to offset scale whitespace */
   }
 
   .hero-content {
-    padding-bottom: 40px;
-    justify-content: center;
-    text-align: center;
+    padding: 40px 20px 60px; /* Restore top padding */
+    flex-direction: column; /* Text on top, image below */
   }
 
   .hero-text {
@@ -784,6 +897,11 @@ const carouselSlides = [
   .hero-carousel {
     height: auto;
     min-height: unset;
+  }
+
+  /* Ensure dots are visible on mobile */
+  .custom-dots {
+    display: flex;
   }
 }
 </style>

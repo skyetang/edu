@@ -1,8 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { 
-  NModal, NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NButton, NInputGroup, NCheckbox, useMessage 
+  NModal, NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NButton, NInputGroup, NCheckbox, useMessage, NIcon
 } from 'naive-ui'
+import { 
+  LockClosedOutline, 
+  KeyOutline, 
+  PhonePortraitOutline 
+} from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({
@@ -17,6 +22,7 @@ const message = useMessage()
 const activeTab = ref('login')
 const loginMethod = ref('password')
 const loading = ref(false)
+const sendingCode = ref(false)
 const countdown = ref(0)
 let timer = null
 
@@ -24,6 +30,12 @@ let timer = null
 const loginCodeForm = ref({
   phone: '',
   code: ''
+})
+
+// Login Form (Password)
+const loginPasswordForm = ref({
+  phone: '',
+  password: ''
 })
 
 // Register Form
@@ -76,25 +88,36 @@ const handleSendCode = async () => {
     message.error('请输入正确的手机号')
     return
   }
+  sendingCode.value = true
   try {
     const scene = activeTab.value === 'register' ? 'register' : 'login'
     await authStore.sendCode(phone, scene)
     message.success('验证码已发送')
     startCountdown()
   } catch (err) {
-    message.error(err.message || '发送失败')
+    if (!err.isGloballyHandled) {
+        message.error(err.message || '发送失败')
+    }
+  } finally {
+    sendingCode.value = false
   }
 }
 
 const handleSubmitLogin = async () => {
   loading.value = true
   try {
-    await authStore.loginWithCode(loginCodeForm.value.phone, loginCodeForm.value.code)
+    if (loginMethod.value === 'password') {
+      await authStore.loginWithPassword(loginPasswordForm.value.phone, loginPasswordForm.value.password)
+    } else {
+      await authStore.loginWithCode(loginCodeForm.value.phone, loginCodeForm.value.code)
+    }
     message.success('登录成功')
     emit('update:show', false)
     emit('success')
   } catch (err) {
-    message.error(err.message || '登录失败')
+    if (!err.isGloballyHandled) {
+        message.error(err.message || '登录失败')
+    }
   } finally {
     loading.value = false
   }
@@ -115,7 +138,9 @@ const handleSubmitRegister = async () => {
     message.success('注册成功')
     activeTab.value = 'login'
   } catch (err) {
-    message.error(err.message || '注册失败')
+    if (!err.isGloballyHandled) {
+        message.error(err.message || '注册失败')
+    }
   } finally {
     loading.value = false
   }
@@ -129,73 +154,208 @@ const handleClose = () => {
 <template>
   <n-modal :show="show" @update:show="emit('update:show', $event)">
     <n-card
-      style="width: 420px"
+      class="auth-card"
       :bordered="false"
-      size="huge"
+      size="large"
       role="dialog"
       aria-modal="true"
       closable
       @close="handleClose"
     >
-      <div class="modal-title">{{ activeTab === 'login' ? '用户登录' : '用户注册' }}</div>
-      <div v-if="activeTab === 'login'" class="login-block">
-        <n-tabs v-model:value="loginMethod" type="line" justify-content="flex-start" class="login-tabs">
+      <div class="auth-header">
+        <div class="modal-title">{{ activeTab === 'login' ? '欢迎登录' : '注册账号' }}</div>
+        <div class="modal-subtitle">加入贝塔AI，开启学习之旅</div>
+      </div>
+
+      <div v-if="activeTab === 'login'" class="auth-body">
+        <n-tabs 
+          v-model:value="loginMethod" 
+          type="segment" 
+          animated 
+          class="auth-tabs"
+        >
           <n-tab-pane name="password" tab="密码登录">
-            <n-form :model="loginPasswordForm" :rules="rules" class="form-block compact" label-placement="left" label-width="80">
-              <n-form-item path="phone" label="手机号">
-                <n-input v-model:value="loginPasswordForm.phone" placeholder="请输入手机号" />
+            <n-form :model="loginPasswordForm" :rules="rules" :show-label="false" class="auth-form">
+              <n-form-item path="phone">
+                <n-input 
+                  v-model:value="loginPasswordForm.phone" 
+                  placeholder="请输入手机号" 
+                  size="large"
+                >
+                  <template #prefix>
+                    <n-icon :component="PhonePortraitOutline" />
+                  </template>
+                </n-input>
               </n-form-item>
-              <n-form-item path="password" label="密码">
-                <n-input v-model:value="loginPasswordForm.password" type="password" show-password-on="click" placeholder="请输入密码" />
+              <n-form-item path="password">
+                <n-input 
+                  v-model:value="loginPasswordForm.password" 
+                  type="password" 
+                  show-password-on="click" 
+                  placeholder="请输入密码" 
+                  size="large"
+                  @keyup.enter="handleSubmitLogin"
+                >
+                  <template #prefix>
+                    <n-icon :component="LockClosedOutline" />
+                  </template>
+                </n-input>
               </n-form-item>
-              <n-button type="primary" block size="large" class="primary-action" @click="handleSubmitLogin" :loading="loading">登录</n-button>
-              <div class="switch-tip">还没有账号？ <a class="link" @click="activeTab = 'register'">点击注册</a></div>
+              <n-button 
+                type="primary" 
+                block 
+                size="large" 
+                class="submit-btn" 
+                @click="handleSubmitLogin" 
+                :loading="loading"
+              >
+                立即登录
+              </n-button>
             </n-form>
           </n-tab-pane>
+          
           <n-tab-pane name="code" tab="验证码登录">
-            <n-form :model="loginCodeForm" :rules="rules" class="form-block compact" label-placement="left" label-width="80">
-              <n-form-item path="phone" label="手机号">
-                <n-input v-model:value="loginCodeForm.phone" placeholder="请输入手机号" />
+            <n-form :model="loginCodeForm" :rules="rules" :show-label="false" class="auth-form">
+              <n-form-item path="phone">
+                <n-input 
+                  v-model:value="loginCodeForm.phone" 
+                  placeholder="请输入手机号" 
+                  size="large"
+                >
+                  <template #prefix>
+                    <n-icon :component="PhonePortraitOutline" />
+                  </template>
+                </n-input>
               </n-form-item>
-              <n-form-item path="code" label="验证码">
+              <n-form-item path="code">
                 <n-input-group>
-                  <n-input v-model:value="loginCodeForm.code" placeholder="请输入验证码" />
-                  <n-button :disabled="countdown > 0" @click="handleSendCode" type="primary" class="send-code">
-                    {{ countdown > 0 ? `${countdown}s后重发` : '发送验证码' }}
+                  <n-input 
+                    v-model:value="loginCodeForm.code" 
+                    placeholder="请输入验证码" 
+                    size="large"
+                    @keyup.enter="handleSubmitLogin"
+                  >
+                    <template #prefix>
+                      <n-icon :component="KeyOutline" />
+                    </template>
+                  </n-input>
+                  <n-button 
+                    :disabled="countdown > 0 || sendingCode"
+                    :loading="sendingCode" 
+                    @click="handleSendCode" 
+                    ghost
+                    type="primary" 
+                    size="large"
+                    class="send-code-btn"
+                  >
+                    {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
                   </n-button>
                 </n-input-group>
               </n-form-item>
-              <n-button type="primary" block size="large" class="primary-action" @click="handleSubmitLogin" :loading="loading">登录</n-button>
-              <div class="switch-tip">还没有账号？ <a class="link" @click="activeTab = 'register'">点击注册</a></div>
+              <n-button 
+                type="primary" 
+                block 
+                size="large" 
+                class="submit-btn" 
+                @click="handleSubmitLogin" 
+                :loading="loading"
+              >
+                立即登录
+              </n-button>
             </n-form>
           </n-tab-pane>
         </n-tabs>
+        
+        <div class="auth-footer">
+          还没有账号？ <span class="link" @click="activeTab = 'register'">立即注册</span>
+        </div>
       </div>
 
-      <div v-if="activeTab === 'register'" class="register-block">
-        <n-form :model="registerForm" :rules="rules" class="form-block" label-placement="left" label-width="80">
-          <n-form-item path="phone" label="手机号">
-            <n-input v-model:value="registerForm.phone" placeholder="请输入手机号" />
+      <div v-if="activeTab === 'register'" class="auth-body">
+        <n-form :model="registerForm" :rules="rules" :show-label="false" class="auth-form">
+          <n-form-item path="phone">
+            <n-input 
+              v-model:value="registerForm.phone" 
+              placeholder="请输入手机号" 
+              size="large"
+            >
+              <template #prefix>
+                <n-icon :component="PhonePortraitOutline" />
+              </template>
+            </n-input>
           </n-form-item>
-          <n-form-item path="password" label="密码">
-            <n-input v-model:value="registerForm.password" type="password" show-password-on="click" placeholder="请输入密码" />
+          <n-form-item path="password">
+            <n-input 
+              v-model:value="registerForm.password" 
+              type="password" 
+              show-password-on="click" 
+              placeholder="设置密码（6位以上）" 
+              size="large"
+            >
+              <template #prefix>
+                <n-icon :component="LockClosedOutline" />
+              </template>
+            </n-input>
           </n-form-item>
-          <n-form-item path="confirmPassword" label="确认密码">
-            <n-input v-model:value="registerForm.confirmPassword" type="password" show-password-on="click" placeholder="请再次输入密码" />
+          <n-form-item path="confirmPassword">
+            <n-input 
+              v-model:value="registerForm.confirmPassword" 
+              type="password" 
+              show-password-on="click" 
+              placeholder="确认密码" 
+              size="large"
+              @keyup.enter="handleSubmitRegister"
+            >
+              <template #prefix>
+                <n-icon :component="LockClosedOutline" />
+              </template>
+            </n-input>
           </n-form-item>
-          <n-form-item path="code" label="验证码">
+          <n-form-item path="code">
             <n-input-group>
-              <n-input v-model:value="registerForm.code" placeholder="请输入验证码" />
-              <n-button :disabled="countdown > 0" @click="handleSendCode" type="primary" class="send-code">{{ countdown > 0 ? `${countdown}s后重发` : '发送验证码' }}</n-button>
+              <n-input 
+                v-model:value="registerForm.code" 
+                placeholder="请输入验证码" 
+                size="large"
+              >
+                <template #prefix>
+                  <n-icon :component="KeyOutline" />
+                </template>
+              </n-input>
+              <n-button 
+                :disabled="countdown > 0 || sendingCode" 
+                :loading="sendingCode"
+                @click="handleSendCode" 
+                ghost
+                type="primary" 
+                size="large"
+                class="send-code-btn"
+              >
+                {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+              </n-button>
             </n-input-group>
           </n-form-item>
 
           <div class="agreements">
-            <n-checkbox v-model:checked="registerForm.agree">我已阅读并同意 <a class="link">《用户协议》</a> <a class="link">《隐私协议》</a></n-checkbox>
+            <n-checkbox v-model:checked="registerForm.agree">
+              我已阅读并同意 <span class="link">《用户协议》</span> 和 <span class="link">《隐私协议》</span>
+            </n-checkbox>
           </div>
 
-          <n-button type="primary" block size="large" class="primary-action" @click="handleSubmitRegister" :loading="loading">注册</n-button>
-          <div class="switch-tip">已有账号，<a class="link" @click="activeTab = 'login'">点击登录</a></div>
+          <n-button 
+            type="primary" 
+            block 
+            size="large" 
+            class="submit-btn" 
+            @click="handleSubmitRegister" 
+            :loading="loading"
+          >
+            立即注册
+          </n-button>
+          
+          <div class="auth-footer">
+            已有账号？ <span class="link" @click="activeTab = 'login'">去登录</span>
+          </div>
         </n-form>
       </div>
     </n-card>
@@ -203,44 +363,109 @@ const handleClose = () => {
 </template>
 
 <style scoped>
-.modal-title {
+.auth-card {
+  width: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.auth-header {
   text-align: center;
-  font-size: 22px;
-  color: var(--primary-color);
+  margin-bottom: 24px;
+  margin-top: 0;
+}
+
+.logo-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 107, 53, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.modal-title {
+  font-size: 24px;
+  color: #333;
   font-weight: 700;
   margin-bottom: 8px;
 }
 
-.login-block { margin-top: 8px; }
-
-.form-block :deep(.n-form-item-label) {
-  color: #333;
-  font-weight: 500;
-}
-.req { color: #ff4d4f; margin-left: 4px; }
-
-.send-code {
-  margin-left: 8px;
+.modal-subtitle {
+  font-size: 14px;
+  color: #999;
 }
 
-.primary-action {
-  margin-top: 6px;
-  border-radius: 10px;
-  background: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(25, 190, 107, 0.4) inset;
+.auth-tabs {
+  margin-bottom: 24px;
 }
 
-.switch-tip {
-  margin-top: 8px;
+.auth-form {
+  margin-top: 16px;
+}
+
+.submit-btn {
+  margin-top: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.send-code-btn {
+  width: 110px;
+}
+
+.auth-footer {
+  margin-top: 20px;
   text-align: center;
+  font-size: 14px;
   color: #666;
 }
-.link { color: var(--primary-color); cursor: pointer; }
+
+.link {
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.link:hover {
+  opacity: 0.8;
+}
 
 .agreements {
-  background: #f9f9f9;
-  padding: 10px;
+  margin: 12px 0 20px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.n-card__content) {
+  padding: 0 32px 58px;
+}
+
+:deep(.n-input .n-input__input-el) {
+  height: 40px;
+}
+
+:deep(.n-input) {
   border-radius: 8px;
-  margin-bottom: 10px;
+}
+
+:deep(.n-tabs-nav--segment-type .n-tabs-nav-scroll-content) {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+:deep(.n-tabs .n-tabs-tab.n-tabs-tab--active) {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  font-weight: 600;
+  color: var(--primary-color);
 }
 </style>
