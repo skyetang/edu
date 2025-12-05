@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
-import { NButton, NDataTable, NModal, NCard, NForm, NFormItem, NInput, NInputNumber, NSwitch, useMessage, NSpace, NSelect, useDialog, NIcon } from 'naive-ui'
-import { CreateOutline, TrashOutline } from '@vicons/ionicons5'
+import { NButton, NDataTable, NModal, NCard, NForm, NFormItem, NInput, NInputNumber, NSwitch, useMessage, NSpace, NSelect, useDialog, NTag, NIcon } from 'naive-ui'
 import { getPlans, createPlan, updatePlan, deletePlan } from '@/api/membership'
+import { CheckmarkCircleOutline, CloseCircleOutline, CheckmarkCircle } from '@vicons/ionicons5'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -56,14 +56,34 @@ const columns = [
           return `${row.duration_days} 天`
       }
   },
-  { title: '描述', key: 'description', minWidth: 200, ellipsis: true },
+  { 
+    title: '描述', 
+    key: 'description', 
+    minWidth: 200,
+    render(row) {
+      if (!row.description) return '-'
+      const lines = row.description.split('\n').filter(l => l.trim())
+      return h('div', { style: 'display: flex; flex-direction: column; gap: 4px;' }, 
+        lines.map(line => h('div', { style: 'display: flex; align-items: center; gap: 4px; font-size: 13px; color: #666;' }, [
+          h(NIcon, { color: '#18a058', size: 16 }, { default: () => h(CheckmarkCircle) }),
+          h('span', line)
+        ]))
+      )
+    }
+  },
   { 
     title: '状态', 
     key: 'is_active',
     width: 100,
     align: 'center',
     render(row) {
-      return row.is_active ? '启用' : '禁用'
+      return h(NTag, { 
+        type: row.is_active ? 'success' : 'error',
+        bordered: false
+      }, { 
+        default: () => row.is_active ? '启用' : '禁用',
+        icon: () => h(NIcon, null, { default: () => h(row.is_active ? CheckmarkCircleOutline : CloseCircleOutline) })
+      })
     }
   },
   {
@@ -73,26 +93,18 @@ const columns = [
     align: 'center',
     fixed: 'right',
     render(row) {
-      return h(NSpace, null, {
+      return h(NSpace, { justify: 'center' }, {
         default: () => [
           h(NButton, { 
               size: 'small', 
-              quaternary: true,
               type: 'primary',
               onClick: () => handleEdit(row) 
-          }, { 
-              default: () => '编辑',
-              icon: () => h(NIcon, null, { default: () => h(CreateOutline) })
-          }),
+          }, { default: () => '编辑' }),
           h(NButton, { 
               size: 'small', 
-              quaternary: true,
               type: 'error', 
               onClick: () => handleDelete(row) 
-          }, { 
-              default: () => '删除',
-              icon: () => h(NIcon, null, { default: () => h(TrashOutline) })
-          })
+          }, { default: () => '删除' })
         ]
       })
     }
@@ -198,11 +210,9 @@ onMounted(() => {
         role="dialog"
         aria-modal="true"
       >
-        <div class="modal-header">
+        <template #header>
           <div class="modal-title">{{ isEdit ? '编辑会员' : '创建会员' }}</div>
-          <div class="modal-subtitle">设置会员等级权限与价格</div>
-        </div>
-        
+        </template>
         <n-form ref="formRef" :model="formValue" :rules="rules" label-placement="left" label-width="100px" size="large">
           <n-form-item label="名称" path="name">
             <n-input v-model:value="formValue.name" placeholder="如：VIP会员" />

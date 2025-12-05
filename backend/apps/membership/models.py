@@ -33,7 +33,7 @@ class MembershipPlan(models.Model):
         return f"{self.name} (Lv.{self.level})"
         
     def save(self, *args, **kwargs):
-        # Calculate total days based on unit and value
+        # 根据单位和数值计算总天数
         multipliers = {
             "DAY": 1,
             "WEEK": 7,
@@ -68,7 +68,7 @@ class MemberOrder(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="member_orders", verbose_name="用户")
     plan = models.ForeignKey(MembershipPlan, on_delete=models.SET_NULL, null=True, verbose_name="会员套餐")
     
-    # Store snapshot of plan details
+    # 存储套餐详情快照
     plan_name = models.CharField(max_length=50, verbose_name="套餐名称快照")
     plan_days = models.IntegerField(verbose_name="套餐天数快照")
     
@@ -91,3 +91,32 @@ class MemberOrder(models.Model):
 
     def __str__(self):
         return f"Order {self.order_no} - {self.user.phone}"
+
+class PaymentTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = (
+        ("PAYMENT", "支付"),
+        ("REFUND", "退款"),
+    )
+
+    STATUS_CHOICES = (
+        ("SUCCESS", "成功"),
+        ("FAILED", "失败"),
+    )
+
+    order = models.ForeignKey(MemberOrder, on_delete=models.CASCADE, related_name="transactions", verbose_name="关联订单")
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, verbose_name="交易类型")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="交易金额")
+    external_transaction_id = models.CharField(max_length=128, null=True, blank=True, verbose_name="第三方交易号")
+    platform = models.CharField(max_length=20, verbose_name="支付平台") # ALIPAY, WECHAT
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="SUCCESS", verbose_name="状态")
+    raw_response = models.TextField(null=True, blank=True, verbose_name="原始响应")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+
+    class Meta:
+        db_table = "payment_transactions"
+        ordering = ["-created_at"]
+        verbose_name = "支付流水"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.transaction_type} - {self.order.order_no} - {self.amount}"

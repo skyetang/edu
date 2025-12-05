@@ -8,12 +8,11 @@ import { NButton, NDropdown, NAvatar } from 'naive-ui'
 const router = useRouter()
 const authStore = useAuthStore()
 const mobileMenuOpen = ref(false)
-const showLoginModal = ref(false)
 
 const menuItems = [
   { label: '首页', key: 'home', path: '/' },
   { label: '视频课程', key: 'courses', path: '/courses' },
-  { label: '工作流案例', key: 'cases', path: '/cases' },
+  { label: '工作流案例', key: 'workflows', path: '/workflows' },
   { label: 'VIP会员', key: 'membership', path: '/membership' },
   { label: '技术文档', key: 'docs', path: '/docs' },
 ]
@@ -42,7 +41,15 @@ const navigateTo = (path) => {
 }
 
 const handleLoginClick = () => {
-  showLoginModal.value = true
+  authStore.openLoginModal()
+}
+
+const isActive = (path) => {
+  const currentPath = router.currentRoute.value.path
+  if (path === '/') {
+    return currentPath === '/'
+  }
+  return currentPath.startsWith(path)
 }
 </script>
 
@@ -62,7 +69,7 @@ const handleLoginClick = () => {
           :key="item.key" 
           @click.prevent="navigateTo(item.path)"
           class="nav-link"
-          :class="{ active: router.currentRoute.value.path === item.path }"
+          :class="{ active: isActive(item.path) }"
         >
           {{ item.label }}
         </a>
@@ -117,7 +124,7 @@ const handleLoginClick = () => {
       </nav>
     </div>
 
-    <LoginModal v-model:show="showLoginModal" />
+    <LoginModal v-model:show="authStore.showLoginModal" />
   </header>
 </template>
 

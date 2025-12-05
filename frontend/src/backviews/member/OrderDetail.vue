@@ -15,7 +15,7 @@ import {
     RepeatOutline,
     ArrowUpCircleOutline
 } from '@vicons/ionicons5'
-import { getOrderDetail, payOrder, cancelOrder } from '@/api/membership'
+import { getOrderDetail, payOrder, cancelOrder, queryPaymentStatus } from '@/api/membership'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -25,11 +25,26 @@ const authStore = useAuthStore()
 const order = ref(null)
 const loading = ref(false)
 const paymentMethod = ref('ALIPAY') 
-const orderNo = route.query.order_no
+const orderNo = route.query.order_no || route.query.out_trade_no
 
 const isOwner = computed(() => {
     return authStore.user && order.value && authStore.user.id === order.value.user
 })
+
+const checkPayment = async (no) => {
+    try {
+        const res = await queryPaymentStatus(no)
+        if (res.trade_status === 'TRADE_SUCCESS' || res.trade_status === 'TRADE_FINISHED') {
+            message.success('支付确认成功')
+            await authStore.fetchProfile()
+            fetchOrder()
+        } else {
+            fetchOrder()
+        }
+    } catch (error) {
+        console.error('Query payment status failed', error)
+    }
+}
 
 const fetchOrder = async () => {
   if (!orderNo) return
@@ -48,7 +63,13 @@ const fetchOrder = async () => {
 
 const handlePay = async () => {
   try {
-    await payOrder(orderNo, paymentMethod.value)
+    const res = await payOrder(orderNo, paymentMethod.value)
+    
+    if (res && res.payment_url && res.platform === 'alipay') {
+        window.location.href = res.payment_url
+        return
+    }
+
     message.success('支付成功')
     await authStore.fetchProfile()
     await fetchOrder() 
@@ -144,6 +165,9 @@ const dynamicTime = computed(() => {
 
 onMounted(() => {
   fetchOrder()
+  if (route.query.out_trade_no) {
+      checkPayment(route.query.out_trade_no)
+  }
 })
 </script>
 

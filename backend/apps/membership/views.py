@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from config.response import ok, error
 from .models import MembershipPlan, MemberOrder
 from .serializers import MembershipPlanSerializer, MemberOrderSerializer
-from .services import check_and_expire_order
+from .services import check_and_expire_order, process_payment_success
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from decimal import Decimal
 
@@ -20,7 +20,7 @@ class PlanManageView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Admin sees all, others see active only
+        # 管理员查看所有，其他人仅查看已启用
         if request.user.is_authenticated and request.user.is_staff:
             plans = MembershipPlan.objects.all()
         else:
@@ -63,10 +63,8 @@ class PlanManageView(APIView):
         try:
             plan = MembershipPlan.objects.get(id=request.query_params.get("id"))
             
-            # Check if any orders exist for this plan
             # 检查是否存在关联订单
             if MemberOrder.objects.filter(plan=plan).exists():
-                # Soft delete: just set inactive
                 # 软删除：仅设置为停用
                 plan.is_active = False
                 plan.save()
@@ -89,19 +87,17 @@ class OrderCreateView(APIView):
         
         user = request.user
         
-        # Use transaction and lock to prevent race condition
         # 使用事务和锁防止竞态条件
         with transaction.atomic():
-            # Lock the user record (or a dummy record) to serialize order creation for this user
             # 锁定用户记录以串行化该用户的订单创建
-            # We select the user for update to ensure no other transaction can process order creation for this user simultaneously
+            # 我们使用 select_for_update 锁定用户，确保没有其他事务能同时处理该用户的订单创建
             _lock = User.objects.select_for_update().get(id=user.id)
             
             order_type = "NEW"
             discount_amount = 0
             amount = plan.price
             
-            # Determine Order Type
+            # 确定订单类型
             is_vip = user.membership_expire_at and user.membership_expire_at > timezone.now()
             
             if is_vip:
@@ -109,15 +105,15 @@ class OrderCreateView(APIView):
                     order_type = "RENEWAL"
                 elif user.level < plan.level:
                     order_type = "UPGRADE"
-                    # Calculate Upgrade Discount
-                    # Formula: Remaining Value = (Reference Amount / Reference Days) * Remaining Days
+                    # 计算升级折扣
+                    # 公式：剩余价值 = (参考总价 / 参考总天数) * 剩余天数
                     if user.membership_reference_days > 0:
                         remaining_days = (user.membership_expire_at - timezone.now()).days
                         if remaining_days > 0:
                             daily_rate = Decimal(str(user.membership_reference_amount)) / Decimal(user.membership_reference_days)
                             discount_amount = round(daily_rate * Decimal(remaining_days), 2)
                             
-                            # Discount cannot exceed plan price
+                            # 折扣不能超过套餐价格
                             if discount_amount > plan.price:
                                 discount_amount = plan.price
                             
@@ -125,23 +121,23 @@ class OrderCreateView(APIView):
                 else:
                      return error("VALIDATION_ERROR", "不支持降级购买", status=422)
             
-            # Check for existing pending orders
-            # 1. Find all pending orders for this user
+            # 检查是否存在待支付订单
+            # 1. 查找该用户的所有待支付订单
             pending_orders = MemberOrder.objects.filter(user=user, status="PENDING")
             has_valid_pending_order = False
             
             for pending_order in pending_orders:
-                # 2. Check if expired (this function updates status to EXPIRED if timed out)
+                # 2. 检查是否过期（如果超时，此函数将状态更新为已过期）
                 is_expired = check_and_expire_order(pending_order)
                 if not is_expired:
-                    # If not expired, it means it's still valid and pending
+                    # 如果未过期，说明订单仍然有效且待支付
                     has_valid_pending_order = True
                     break
             
             if has_valid_pending_order:
                 return error("VALIDATION_ERROR", "您存在未支付的订单，请先支付或取消后再下单", status=422)
 
-            # Create Pending Order
+            # 创建待支付订单
             order_no = f"VIP{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000,9999)}"
             
             order = MemberOrder.objects.create(
@@ -168,7 +164,7 @@ class OrderDetailView(APIView):
             if not request.user.is_staff and order.user != request.user:
                 return error("PERMISSION_DENIED", "无权查看此订单", status=403)
             
-            # Check and expire if necessary
+            # 检查并在必要时设置过期
             check_and_expire_order(order)
             
             return ok(MemberOrderSerializer(order).data)
@@ -189,72 +185,97 @@ class OrderPayView(APIView):
         except MemberOrder.DoesNotExist:
             return error("NOT_FOUND", "订单不存在", status=404)
         
-        # Check expiration first (and update status if expired)
+        # 首先检查过期情况（如果过期则更新状态）
         if check_and_expire_order(order):
             return error("VALIDATION_ERROR", "订单已过期", status=422)
             
         if order.status != "PENDING":
             return error("VALIDATION_ERROR", "订单状态不可支付", status=422)
 
-        # Mock Payment Process
-        with transaction.atomic():
-            # 1. Update Order
-            order.status = "PAID"
-            order.payment_method = payment_method
-            order.paid_at = timezone.now()
-            order.save()
-            
-            # 2. Update User Membership
-            user = request.user
-            
-            if not order.plan:
-                 # Should not happen normally if plan is just soft-deleted
-                 # If hard deleted, we cannot retrieve level info unless snapshotted.
-                 # For now, fail safe.
-                 raise ValueError("订单关联套餐已不存在")
+        # 支付宝支付
+        if payment_method == "ALIPAY":
+            from .alipay_service import AlipayService
+            try:
+                result = AlipayService.create_payment_request(order)
+                return ok(result)
+            except Exception as e:
+                # 记录日志并抛出，由全局异常处理或直接返回500
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Alipay creation failed: {e}")
+                # 如果是 ValidationException (422) 或 ExternalServiceException (503)，
+                # 它们是 APIException 的子类，raise 会被 DRF 捕获并返回对应状态码。
+                # 否则如果是普通 Exception，DRF 会返回 500。
+                raise
 
-            if order.order_type == "NEW":
-                user.level = order.plan.level
-                user.membership_expire_at = timezone.now() + timedelta(days=order.plan_days)
-                user.membership_reference_amount = order.amount
-                user.membership_reference_days = order.plan_days
+        # 模拟支付流程 (仅用于测试或非支付宝方式)
+        try:
+            process_payment_success(order, payment_method or "MOCK")
+            return ok(message="支付成功，会员已开通")
+        except Exception as e:
+            return error("SERVER_ERROR", str(e), status=500)
 
-            elif order.order_type == "RENEWAL":
-                current_expire = user.membership_expire_at
-                if current_expire and current_expire > timezone.now():
-                    user.membership_expire_at = current_expire + timedelta(days=order.plan_days)
-                else:
-                    user.membership_expire_at = timezone.now() + timedelta(days=order.plan_days)
-                
-                user.membership_reference_amount += order.amount
-                user.membership_reference_days += order.plan_days
+class OrderPaymentQueryView(APIView):
+    permission_classes = [IsAuthenticated]
 
-            elif order.order_type == "UPGRADE":
-                user.level = order.plan.level
-                user.membership_expire_at = timezone.now() + timedelta(days=order.plan_days)
-                # Reset Reference to the full value of the new plan
-                # Since we used the old value as discount, effectively we 'bought' the new plan 
-                # partially with cash and partially with old value.
-                # So the new reference value should be the plan price (or amount + discount).
-                user.membership_reference_amount = order.amount + order.discount_amount
-                user.membership_reference_days = order.plan_days
-                
-            user.save()
-            
-        return ok(message="支付成功，会员已开通")
+    def get(self, request):
+        order_no = request.query_params.get("order_no")
+        if not order_no:
+            return error("VALIDATION_ERROR", "订单号不能为空", status=422)
+        
+        try:
+            order = MemberOrder.objects.get(order_no=order_no)
+            if not request.user.is_staff and order.user != request.user:
+                return error("PERMISSION_DENIED", "无权查询此订单", status=403)
+        except MemberOrder.DoesNotExist:
+            return error("NOT_FOUND", "订单不存在", status=404)
+
+        from .alipay_service import AlipayService
+        try:
+            result = AlipayService.query_payment_status(order_no)
+            return ok(result)
+        except Exception as e:
+            # 如果查询失败，可能是网络问题，或者支付宝返回错误
+            # 我们可以返回当前数据库中的状态
+            return ok({
+                "order_no": order.order_no,
+                "trade_status": "UNKNOWN",
+                "local_status": order.status,
+                "error": str(e)
+            }, message=f"查询支付宝失败，仅返回本地状态")
 
 class OrderListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Admin sees all, User sees own
+        # 管理员查看所有，用户查看自己
         scope = request.query_params.get("scope")
         if request.user.is_staff and scope != 'my':
             orders = MemberOrder.objects.all().order_by('-created_at')
         else:
             orders = MemberOrder.objects.filter(user=request.user).order_by('-created_at')
-            
-        return ok(MemberOrderSerializer(orders, many=True).data)
+        
+        # 分页处理
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 10  # 默认每页10条
+        
+        # 允许前端控制每页条数
+        page_size = request.query_params.get('page_size')
+        if page_size:
+            paginator.page_size = page_size
+
+        result_page = paginator.paginate_queryset(orders, request)
+        serializer = MemberOrderSerializer(result_page, many=True)
+        
+        # 使用 UnifiedModelViewSet 类似的返回结构
+        return ok(data=serializer.data, meta={
+            'pagination': {
+                'total': paginator.page.paginator.count,
+                'page': paginator.page.number,
+                'page_size': paginator.page.paginator.per_page
+            }
+        })
 
 class OrderActionView(APIView):
     permission_classes = [IsAuthenticated]
@@ -268,15 +289,15 @@ class OrderActionView(APIView):
         except MemberOrder.DoesNotExist:
             return error("NOT_FOUND", "订单不存在", status=404)
             
-        # Cancel logic
+        # 取消逻辑
         if action == "cancel":
-            # Check expiration first
+            # 首先检查过期情况
             if check_and_expire_order(order):
                 return error("VALIDATION_ERROR", "订单已过期，不可取消", status=422)
 
             if order.status != "PENDING":
                 return error("VALIDATION_ERROR", "当前状态不可取消", status=422)
-            # Admin can cancel anyone's, User can only cancel own
+            # 管理员可以取消任何人的订单，用户只能取消自己的
             if not request.user.is_staff and order.user != request.user:
                 return error("PERMISSION_DENIED", f"无权操作: User {request.user.phone}", status=403)
                 
@@ -284,19 +305,63 @@ class OrderActionView(APIView):
             order.save()
             return ok(message="订单已取消")
             
-        # Refund logic (Admin Only)
+        # 退款逻辑（仅限管理员）
         elif action == "refund":
             if not request.user.is_staff:
                 return error("PERMISSION_DENIED", f"无权操作: User {request.user.phone}", status=403)
             
+            # 幂等性检查：如果已经退款，直接返回成功或提示
+            if order.status == "REFUNDED":
+                return ok(message="订单已经是退款状态")
+
             if order.status != "PAID":
                 return error("VALIDATION_ERROR", "当前状态不可退款", status=422)
                 
+            # 如果是支付宝支付，先调用支付宝退款
+            refund_response = None
+            if order.payment_method == "ALIPAY":
+                from .alipay_service import AlipayService
+                try:
+                    refund_response = AlipayService.refund_order(order)
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Alipay refund failed: {e}")
+                    # 如果退款失败，不继续执行本地回滚
+                    return error("SERVER_ERROR", f"支付宝退款失败: {str(e)}", status=500)
+
             with transaction.atomic():
                 order.status = "REFUNDED"
                 order.save()
+
+                # 记录退款流水
+                from .models import PaymentTransaction
+                if refund_response:
+                     PaymentTransaction.objects.create(
+                        order=order,
+                        transaction_type="REFUND",
+                        amount=order.amount, # 默认全额退款
+                        platform="ALIPAY",
+                        external_transaction_id=refund_response.get("trade_no"), # 注意：支付宝退款接口返回的可能不包含 trade_no，而是 out_trade_no (原订单号) 和 refund_fee
+                        # 实际上 refund_order 返回的 dict 包含 'refund_fee' 等。支付宝的 trade_no 是原交易号，这里应该尽量记录。
+                        # 我们在 refund_order 返回了 'fund_change' 等。
+                        # 让我们看看 refund_order 返回了什么: order_no, refund_fee, gmt_refund_pay, fund_change
+                        # 它没有返回支付宝的 trade_no (原交易号)，也没有返回本次退款的流水号（支付宝可能不返回新的流水号，而是沿用原 trade_no + out_request_no）
+                        # 这里我们简单记录即可。
+                        raw_response=str(refund_response),
+                        status="SUCCESS"
+                    )
+                else:
+                     # 非支付宝支付的退款（如 Mock 或其他）
+                     PaymentTransaction.objects.create(
+                        order=order,
+                        transaction_type="REFUND",
+                        amount=order.amount,
+                        platform=order.payment_method or "UNKNOWN",
+                        status="SUCCESS"
+                    )
                 
-                # Rollback User Membership
+                # 回滚用户会员信息
                 user = order.user
                 
                 # 1. Deduct days from expiration

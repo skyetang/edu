@@ -11,6 +11,28 @@ const routes = [
     component: HomeView
   },
   {
+    path: '/courses',
+    name: 'client-course-list',
+    component: () => import('../views/courses/CourseList.vue')
+  },
+  {
+    path: '/courses/:id',
+    name: 'client-course-detail',
+    component: () => import('../views/courses/CourseDetail.vue')
+  },
+  {
+    path: '/courses/:id/play/:lessonId',
+    name: 'client-course-play',
+    component: () => import('../views/courses/CoursePlay.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/workflows',
+    name: 'workflow-index',
+    component: () => import('../views/workflows/WorkflowIndex.vue')
+  },
+
+  {
     path: '/membership',
     name: 'membership',
     component: () => import('../views/VipPurchase.vue')
@@ -64,6 +86,32 @@ const routes = [
         name: 'order-detail',
         component: () => import('../backviews/member/OrderDetail.vue'),
         meta: { title: '订单详情' }
+      },
+      // Course Management Routes
+      {
+        path: 'courses/categories',
+        name: 'course-categories',
+        component: () => import('../backviews/courses/CategoryList.vue'),
+        meta: { title: '分类管理', requiresAdmin: true }
+      },
+      {
+        path: 'courses/list',
+        name: 'course-list',
+        component: () => import('../backviews/courses/CourseList.vue'),
+        meta: { title: '课程管理', requiresAdmin: true }
+      },
+      // Workflow Management Routes
+      {
+        path: 'workflows/categories',
+        name: 'workflow-categories',
+        component: () => import('../backviews/workflows/CategoryList.vue'),
+        meta: { title: '工作流分类', requiresAdmin: true }
+      },
+      {
+        path: 'workflows/list',
+        name: 'workflow-list',
+        component: () => import('../backviews/workflows/WorkflowList.vue'),
+        meta: { title: '工作流管理', requiresAdmin: true }
       }
     ]
   }

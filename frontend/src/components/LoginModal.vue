@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { 
   NModal, NCard, NTabs, NTabPane, NForm, NFormItem, NInput, NButton, NInputGroup, NCheckbox, useMessage, NIcon
 } from 'naive-ui'
@@ -21,6 +21,19 @@ const message = useMessage()
 
 const activeTab = ref('login')
 const loginMethod = ref('password')
+
+// Reset state when modal opens
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    activeTab.value = 'login'
+    loginMethod.value = 'password'
+    // Clear forms if needed
+    loginCodeForm.value = { phone: '', code: '' }
+    loginPasswordForm.value = { phone: '', password: '' }
+    registerForm.value = { phone: '', password: '', confirmPassword: '', code: '', agree: false }
+  }
+})
+
 const loading = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
@@ -162,10 +175,12 @@ const handleClose = () => {
       closable
       @close="handleClose"
     >
-      <div class="auth-header">
-        <div class="modal-title">{{ activeTab === 'login' ? '欢迎登录' : '注册账号' }}</div>
-        <div class="modal-subtitle">加入贝塔AI，开启学习之旅</div>
-      </div>
+      <template #header>
+        <div class="auth-header">
+          <div class="modal-title">{{ activeTab === 'login' ? '欢迎登录' : '注册账号' }}</div>
+          <div class="modal-subtitle">加入贝塔AI，开启学习之旅</div>
+        </div>
+      </template>
 
       <div v-if="activeTab === 'login'" class="auth-body">
         <n-tabs 
@@ -372,7 +387,6 @@ const handleClose = () => {
 
 .auth-header {
   text-align: center;
-  margin-bottom: 24px;
   margin-top: 0;
 }
 

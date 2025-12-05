@@ -1,19 +1,16 @@
 <script setup>
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, h, reactive } from 'vue'
 import { NButton, NDataTable, useMessage, NTag, NSpace, NTime, NCountdown, NIcon, useDialog } from 'naive-ui'
 import { 
+  CardOutline,
+  SparklesOutline,
+  RepeatOutline,
+  ArrowUpCircleOutline,
   TimeOutline, 
   CheckmarkCircleOutline, 
   CloseCircleOutline, 
   WalletOutline, 
-  AlertCircleOutline,
-  TrashOutline,
-  CardOutline,
-  PersonOutline,
-  SparklesOutline,
-  RepeatOutline,
-  ArrowUpCircleOutline,
-  EyeOutline
+  AlertCircleOutline
 } from '@vicons/ionicons5'
 import { getOrders, cancelOrder, refundOrder } from '@/api/membership'
 import { useRouter } from 'vue-router'
@@ -23,6 +20,23 @@ const message = useMessage()
 const dialog = useDialog()
 const orders = ref([])
 const loading = ref(false)
+
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  itemCount: 0,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onChange: (page) => {
+    pagination.page = page
+    fetchOrders()
+  },
+  onUpdatePageSize: (pageSize) => {
+    pagination.pageSize = pageSize
+    pagination.page = 1
+    fetchOrders()
+  }
+})
 
 const columns = [
   { title: '订单号', key: 'order_no', width: 200 },
@@ -74,9 +88,7 @@ const columns = [
       return h(NTag, { 
           type: config.type, 
           bordered: false, 
-          round: true, 
-          size: 'small',
-          style: { padding: '0 12px' }
+          size: 'small'
       }, { 
           default: () => config.label,
           icon: () => h(NIcon, null, { default: () => h(config.icon) })
@@ -102,37 +114,31 @@ const columns = [
       
       actions.push(h(NButton, { 
           size: 'small', 
-          quaternary: true,
           type: 'info',
           onClick: () => router.push({ name: 'order-detail', query: { order_no: row.order_no } })
       }, { 
-          default: () => '查看',
-          icon: () => h(NIcon, null, { default: () => h(EyeOutline) })
+          default: () => '查看'
       }))
 
       if (row.status === 'PENDING') {
         actions.push(h(NButton, { 
             size: 'small', 
-            quaternary: true,
             type: 'error',
             onClick: () => handleCancel(row) 
         }, { 
-            default: () => '取消订单',
-            icon: () => h(NIcon, null, { default: () => h(CloseCircleOutline) })
+            default: () => '取消'
         }))
       }
       if (row.status === 'PAID') {
         actions.push(h(NButton, { 
             size: 'small', 
-            quaternary: true,
             type: 'error', 
             onClick: () => handleRefund(row) 
         }, { 
-            default: () => '退款',
-            icon: () => h(NIcon, null, { default: () => h(WalletOutline) })
+            default: () => '退款'
         }))
       }
-      return h(NSpace, null, { default: () => actions })
+      return h(NSpace, { justify: 'center' }, { default: () => actions })
     }
   }
 ]
@@ -140,8 +146,28 @@ const columns = [
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const res = await getOrders()
-    orders.value = res
+    const res = await getOrders({ 
+        page: pagination.page,
+        page_size: pagination.pageSize
+    })
+    if (res.data) {
+        orders.value = res.data
+        // Check for pagination meta
+        if (res.meta && res.meta.pagination) {
+            pagination.itemCount = res.meta.pagination.total
+        } else {
+            pagination.itemCount = res.data.length
+        }
+    } else if (Array.isArray(res)) {
+        orders.value = res
+        pagination.itemCount = res.length
+    } else if (res.results) {
+        orders.value = res.results
+        pagination.itemCount = res.count
+    } else {
+        orders.value = []
+        pagination.itemCount = 0
+    }
   } catch (error) {
     if (!error.isGloballyHandled) {
         message.error('获取订单失败')
@@ -201,7 +227,13 @@ onMounted(() => {
     <div class="header-row">
       <div class="section-title">会员订单列表</div>
     </div>
-    <n-data-table :columns="columns" :data="orders" :loading="loading" />
+    <n-data-table 
+        :columns="columns" 
+        :data="orders" 
+        :loading="loading" 
+        :pagination="pagination"
+        remote
+    />
   </div>
 </template>
 

@@ -23,6 +23,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.users.urls')),
     path('api/membership/', include('apps.membership.urls')),
+    path('api/courses/', include('apps.courses.urls')),
+    path('api/workflows/', include('apps.workflows.urls')),
+    path('api/common/', include('apps.common.urls')),
 ]
 
 if settings.DEBUG:

@@ -378,7 +378,7 @@ const carouselSlides = [
 }
 
 .hero-text {
-  flex: 3;
+  flex: 4;
 }
 
 .hero-text h1 {
@@ -419,7 +419,7 @@ const carouselSlides = [
 }
 
 .hero-image {
-  flex: 2;
+  flex: 1.5;
   display: flex;
   justify-content: flex-end;
   height: 300px;
@@ -435,6 +435,8 @@ const carouselSlides = [
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: scale(0.85);
+  transform-origin: right center;
 }
 
 .course-card {
@@ -465,7 +467,7 @@ const carouselSlides = [
 .card-main {
   width: 280px;
   height: 180px;
-  background: white;
+  background: linear-gradient(to bottom right, #fffaf5, #fff0e6);
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -541,6 +543,8 @@ const carouselSlides = [
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: scale(0.85);
+  transform-origin: right center;
 }
 
 .ai-core {
@@ -579,6 +583,8 @@ const carouselSlides = [
   height: 250px;
   position: relative;
   animation: float 6s ease-in-out infinite; /* Added floating effect */
+  transform: scale(0.85);
+  transform-origin: right center;
 }
 
 .tree-lines {

@@ -159,10 +159,12 @@ const handleChangePassword = async () => {
     <!-- Change Phone Modal -->
     <n-modal v-model:show="showPhoneModal">
         <n-card class="auth-card" :bordered="false" size="large" role="dialog" aria-modal="true" closable @close="showPhoneModal = false">
-            <div class="auth-header">
-                <div class="modal-title">修改手机号</div>
-                <div class="modal-subtitle">为了保障您的账号安全，请验证身份</div>
-            </div>
+            <template #header>
+                <div class="auth-header">
+                    <div class="modal-title">修改手机号</div>
+                    <div class="modal-subtitle">为了保障您的账号安全，请验证身份</div>
+                </div>
+            </template>
 
             <n-steps :current="phoneStep" status="process" style="margin-bottom: 24px">
                 <n-step title="验证身份" />
@@ -210,12 +212,14 @@ const handleChangePassword = async () => {
     <!-- Change Password Modal -->
     <n-modal v-model:show="showPasswordModal">
         <n-card class="auth-card" :bordered="false" size="large" role="dialog" aria-modal="true" closable @close="showPasswordModal = false">
-            <div class="auth-header">
-                <div class="modal-title">修改密码</div>
-                <div class="modal-subtitle">定期更换密码可以提高账号安全性</div>
-            </div>
+            <template #header>
+                <div class="auth-header">
+                    <div class="modal-title">修改密码</div>
+                    <div class="modal-subtitle">定期更换密码可以提高账号安全性</div>
+                </div>
+            </template>
             
-            <n-form :show-label="false">
+            <n-form :model="passwordForm" :show-label="false">
                 <n-form-item>
                     <n-input type="password" show-password-on="click" v-model:value="passwordForm.old_password" placeholder="输入旧密码" size="large">
                         <template #prefix><n-icon :component="LockClosedOutline" /></template>
@@ -328,8 +332,6 @@ const handleChangePassword = async () => {
 
 .auth-header {
     text-align: center;
-    margin-bottom: 24px;
-    margin-top: 0;
 }
 
 :deep(.n-card__content) {

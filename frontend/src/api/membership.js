@@ -39,3 +39,7 @@ export function cancelOrder(orderNo) {
 export function refundOrder(orderNo) {
   return request.post('/membership/orders/action/', { order_no: orderNo, action: 'refund' })
 }
+
+export function queryPaymentStatus(orderNo) {
+  return request.get('/membership/orders/query-status/', { params: { order_no: orderNo } })
+}

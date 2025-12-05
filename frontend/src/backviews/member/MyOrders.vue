@@ -1,18 +1,17 @@
 <script setup>
-import { h, ref, onMounted } from 'vue'
+import { h, ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { NCard, NDataTable, NTag, NButton, NIcon, NSpace, useMessage, NCountdown, NTime, useDialog } from 'naive-ui'
 import { 
-  EyeOutline, 
   CardOutline, 
-  CloseCircleOutline, 
-  TimeOutline, 
-  CheckmarkCircleOutline, 
-  WalletOutline, 
-  AlertCircleOutline,
   SparklesOutline,
   RepeatOutline,
-  ArrowUpCircleOutline
+  ArrowUpCircleOutline,
+  TimeOutline, 
+  CheckmarkCircleOutline, 
+  CloseCircleOutline, 
+  WalletOutline, 
+  AlertCircleOutline
 } from '@vicons/ionicons5'
 import { getOrders, cancelOrder } from '@/api/membership'
 
@@ -21,6 +20,23 @@ const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const data = ref([])
+
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  itemCount: 0,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onChange: (page) => {
+    pagination.page = page
+    fetchOrders()
+  },
+  onUpdatePageSize: (pageSize) => {
+    pagination.pageSize = pageSize
+    pagination.page = 1
+    fetchOrders()
+  }
+})
 
 const columns = [
   {
@@ -87,9 +103,7 @@ const columns = [
         {
           type: config.type,
           bordered: false,
-          round: true,
-          size: 'small',
-          style: { padding: '0 12px' }
+          size: 'small'
         },
         { 
           default: () => config.label,
@@ -118,13 +132,11 @@ const columns = [
             NButton,
             {
             size: 'small',
-            quaternary: true,
             type: row.status === 'PENDING' ? 'primary' : 'info',
             onClick: () => handleView(row)
             },
             {
-            default: () => row.status === 'PENDING' ? '去支付' : '查看',
-            icon: () => h(NIcon, null, { default: () => row.status === 'PENDING' ? h(CardOutline) : h(EyeOutline) })
+            default: () => row.status === 'PENDING' ? '去支付' : '查看'
             }
         )
       ]
@@ -135,18 +147,16 @@ const columns = [
                   NButton,
                   {
                       size: 'small',
-                      quaternary: true,
                       type: 'error',
                       onClick: () => handleCancel(row)
                   },
                   {
-                      default: () => '取消',
-                      icon: () => h(NIcon, null, { default: () => h(CloseCircleOutline) })
+                      default: () => '取消'
                   }
               )
           )
       }
-      return h(NSpace, null, { default: () => actions })
+      return h(NSpace, { justify: 'center' }, { default: () => actions })
     }
   }
 ]
@@ -154,8 +164,28 @@ const columns = [
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const res = await getOrders({ scope: 'my' })
-    data.value = res
+    const res = await getOrders({ 
+        scope: 'my',
+        page: pagination.page,
+        page_size: pagination.pageSize
+    })
+    if (res.data) {
+        data.value = res.data
+        if (res.meta && res.meta.pagination) {
+            pagination.itemCount = res.meta.pagination.total
+        } else {
+            pagination.itemCount = res.data.length
+        }
+    } else if (Array.isArray(res)) {
+        data.value = res
+        pagination.itemCount = res.length
+    } else if (res.results) {
+        data.value = res.results
+        pagination.itemCount = res.count
+    } else {
+        data.value = []
+        pagination.itemCount = 0
+    }
   } catch (error) {
     message.error('获取订单失败')
   } finally {
@@ -201,6 +231,8 @@ onMounted(() => {
         :data="data"
         :loading="loading"
         :bordered="true"
+        :pagination="pagination"
+        remote
       />
     </n-card>
   </div>

@@ -65,16 +65,6 @@ const menuOptions = computed(() => {
     icon: renderIcon(DocumentTextOutline)
   },
   {
-    label: '课程管理',
-    key: 'courses',
-    icon: renderIcon(BookOutline)
-  },
-  {
-    label: '工作流管理',
-    key: 'workflows',
-    icon: renderIcon(GitNetworkOutline)
-  },
-  {
     label: '个人中心',
     key: 'personal-center',
     icon: renderIcon(SettingsOutline),
@@ -86,6 +76,7 @@ const menuOptions = computed(() => {
   ]
 
   if (authStore.user?.is_staff) {
+    // Add Admin Menus
     options.splice(1, 0, {
       label: '会员管理',
       key: 'admin-membership',
@@ -93,6 +84,26 @@ const menuOptions = computed(() => {
       children: [
         { label: '等级设置', key: 'admin-plans' },
         { label: '订单管理', key: 'admin-orders' }
+      ]
+    })
+    
+    options.splice(2, 0, {
+      label: '课程管理',
+      key: 'courses',
+      icon: renderIcon(BookOutline),
+      children: [
+        { label: '课程管理', key: 'course-list' },
+        { label: '分类管理', key: 'course-categories' }
+      ]
+    })
+
+    options.splice(3, 0, {
+      label: '工作流管理',
+      key: 'workflows',
+      icon: renderIcon(GitNetworkOutline),
+      children: [
+        { label: '工作流管理', key: 'workflow-list' },
+        { label: '分类管理', key: 'workflow-categories' }
       ]
     })
   }
@@ -135,6 +146,14 @@ const handleMenuUpdate = (key) => {
     router.push({ name: 'admin-plans' })
   } else if (key === 'admin-orders') {
     router.push({ name: 'admin-orders' })
+  } else if (key === 'course-list') {
+    router.push({ name: 'course-list' })
+  } else if (key === 'course-categories') {
+    router.push({ name: 'course-categories' })
+  } else if (key === 'workflow-list') {
+    router.push({ name: 'workflow-list' })
+  } else if (key === 'workflow-categories') {
+    router.push({ name: 'workflow-categories' })
   } else {
     // Placeholder for other routes
     message.info(`Navigating to ${key}`)

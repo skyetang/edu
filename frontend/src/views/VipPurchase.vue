@@ -288,7 +288,6 @@ onMounted(() => {
 <style scoped>
 .vip-page {
     min-height: 100vh;
-    background-color: #f9f9f9;
     padding-bottom: 60px;
     padding-top: 20px;
 }

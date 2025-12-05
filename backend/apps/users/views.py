@@ -33,7 +33,6 @@ class SendCodeView(APIView):
         phone = s.validated_data["phone"]
         scene = s.validated_data["scene"]
 
-        # Handle masked phone for change_phone_old
         # 处理更换手机号（旧手机号验证）时的掩码手机号
         if scene == "change_phone_old":
             if request.user and request.user.is_authenticated:
@@ -136,9 +135,7 @@ class RefreshTokenView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Use SimpleJWT's TokenRefreshSerializer to handle validation and rotation
         # 使用 SimpleJWT 的 TokenRefreshSerializer 来处理验证和旋转
-        # It will return 'access' and 'refresh' (if ROTATE_REFRESH_TOKENS is True)
         # 它将返回 'access' 和 'refresh'（如果 ROTATE_REFRESH_TOKENS 为 True）
         serializer = TokenRefreshSerializer(data=request.data)
         
@@ -149,7 +146,6 @@ class RefreshTokenView(APIView):
         except Exception as e:
              return error("VALIDATION_ERROR", str(e), status=422)
              
-        # Standardize the response
         # 统一响应格式
         return ok(serializer.validated_data)
 
@@ -243,8 +239,6 @@ class AvatarUploadView(APIView):
         if not file:
             return error("VALIDATION_ERROR", "请选择文件", status=422)
         
-        # Simple local save for now
-        # In production, use OSS or proper media storage
         # 暂时使用简单的本地保存
         # 在生产环境中，请使用 OSS 或适当的媒体存储
         import os
@@ -252,12 +246,10 @@ class AvatarUploadView(APIView):
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
 
-        # Limit file size (e.g. 2MB)
         # 限制文件大小（例如 2MB）
         if file.size > 2 * 1024 * 1024:
             return error("VALIDATION_ERROR", "文件大小不能超过2MB", status=422)
         
-        # Validate extension
         # 验证文件扩展名
         ext = os.path.splitext(file.name)[1].lower()
         if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
@@ -266,13 +258,11 @@ class AvatarUploadView(APIView):
         file_name = f"avatars/{request.user.id}_{int(random.random()*10000)}{ext}"
         path = default_storage.save(file_name, ContentFile(file.read()))
         
-        # Save relative path to DB
         # 保存相对路径到数据库
         user = request.user
         user.avatar = path
         user.save()
         
-        # Return absolute URL for immediate display
         # 返回绝对URL用于立即显示
         url = request.build_absolute_uri(settings.MEDIA_URL + path)
         

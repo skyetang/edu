@@ -44,6 +44,17 @@ ALIYUN_ACCESS_KEY_SECRET = env("ALIYUN_ACCESS_KEY_SECRET", default="")
 ALIYUN_SMS_SIGN_NAME = env("ALIYUN_SMS_SIGN_NAME", default="")
 ALIYUN_SMS_TEMPLATE_CODE = env("ALIYUN_SMS_TEMPLATE_CODE", default="")
 
+# Alipay
+# 支付宝
+ALIPAY_CONFIG = {
+    'server_url': env('ALIPAY_SERVER_URL', default='https://openapi.alipaydev.com/gateway.do'),
+    'app_id': env('ALIPAY_APP_ID', default=''),
+    'app_private_key': env('ALIPAY_APP_PRIVATE_KEY', default=''),
+    'alipay_public_key': env('ALIPAY_PUBLIC_KEY', default=''),
+    'return_url': env('ALIPAY_RETURN_URL', default='http://localhost:5173/membership/order-detail'),
+    'notify_url': env('ALIPAY_NOTIFY_URL', default=''),
+}
+
 
 # Application definition
 # 应用定义
@@ -58,6 +69,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'apps.users',
     'apps.membership',
+    'apps.courses',
+    'apps.workflows',
+    'apps.common',
     'rest_framework_simplejwt',
 ]
 
@@ -205,3 +219,58 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
+
+# Logging Configuration
+# 日志配置
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/django.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'apps': {  # Project apps
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+# Ensure logs directory exists
+# 确保 logs 目录存在
+if not os.path.exists(BASE_DIR / 'logs'):
+    os.makedirs(BASE_DIR / 'logs')

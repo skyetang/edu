@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import * as authApi from '@/api/auth'
+import { uploadFile } from '@/api/common'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -7,7 +8,8 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || null,
     refreshTokenStr: localStorage.getItem('refreshToken') || null,
     loading: false,
-    error: null
+    error: null,
+    showLoginModal: false
   }),
 
   getters: {
@@ -15,6 +17,12 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    openLoginModal() {
+      this.showLoginModal = true
+    },
+    closeLoginModal() {
+      this.showLoginModal = false
+    },
     // 错误处理辅助函数
     handleActionError(error) {
       // 记录错误用于调试
@@ -176,11 +184,17 @@ export const useAuthStore = defineStore('auth', {
     async uploadAvatar(file) {
         try {
             const formData = new FormData()
-            formData.append('avatar', file)
-            const data = await authApi.uploadAvatar(formData)
-             this.user.avatar = data.url
+            formData.append('file', file)
+            // Use common uploadFile with type='avatar'
+            const data = await uploadFile(formData, 'avatar')
+            const avatarUrl = data.url
+            
+            // Update profile with new avatar URL
+            await authApi.updateProfile({ avatar: avatarUrl })
+            
+             this.user.avatar = avatarUrl
              localStorage.setItem('user', JSON.stringify(this.user))
-             return data.url
+             return avatarUrl
         } catch (err) {
             throw this.handleActionError(err)
         }

@@ -95,7 +95,16 @@ service.interceptors.response.use(
     // 如果响应体直接是数组或对象且没有 success 字段（非标准封装），直接返回
     if (body && body.success === undefined) return body
     // 标准封装
-    if (body && body.success) return body.data
+    if (body && body.success) {
+      // 如果有 meta 信息（如分页），连同 data 一起返回
+      if (body.meta) {
+        return {
+          data: body.data,
+          meta: body.meta
+        }
+      }
+      return body.data
+    }
     
     const code = body?.code || 'UNKNOWN_ERROR'
     const message = body?.message || '请求失败'

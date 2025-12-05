@@ -48,5 +48,6 @@ window.addEventListener('storage', (e) => {
 
 .main-content {
   flex: 1;
+  background: linear-gradient(135deg, #fff5f0, #fff);
 }
 </style>
